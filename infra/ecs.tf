@@ -109,7 +109,7 @@ resource "aws_ecs_task_definition" "main" {
   container_definitions = jsonencode([
     {
       name  = "inferno-mlaas-container"
-      image = "495127736328.dkr.ecr.us-east-1.amazonaws.com/inferno-mlaas"
+      image = "495127736328.dkr.ecr.us-east-1.amazonaws.com/inferno-mlaas:latest"
 
       portMappings = [
         {
