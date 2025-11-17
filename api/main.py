@@ -48,7 +48,7 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok"}
+    return {"status": "ok_v4"}
 
 @app.post("/predict", response_model=SentimentResponse)
 async def predict_sentiment(request: SentimentRequest):
