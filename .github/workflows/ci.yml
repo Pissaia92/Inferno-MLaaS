@@ -1,0 +1,32 @@
+name: CI (Lint & Test)
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+          poetry config virtualenvs.in-project true
+
+      - name: Install dependencies
+        run: poetry install --only main,dev
+
+      - name: Run Linter (Ruff)
+        run: poetry run ruff check .
+
+      - name: Run Tests (Pytest)
+        run: poetry run python -m pytest

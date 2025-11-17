@@ -7,19 +7,15 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Generator
 
-
 class SentimentRequest(BaseModel):
     text: str
-
 
 class SentimentResponse(BaseModel):
     text: str
     sentiment: str
 
-
 # Global variable to store the model
 model = None
-
 
 def load_model() -> None:
     """Load the trained model from S3."""
@@ -47,15 +43,12 @@ async def lifespan(app: FastAPI) -> Generator:
     load_model()
     yield
 
-
 app = FastAPI(lifespan=lifespan)
-
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
-
 
 @app.post("/predict", response_model=SentimentResponse)
 async def predict_sentiment(request: SentimentRequest):
