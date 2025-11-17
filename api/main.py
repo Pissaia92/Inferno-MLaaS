@@ -1,69 +1,70 @@
+import io
 import joblib
+import boto3
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from contextlib import asynccontextmanager
-from pathlib import Path
+from typing import Generator
 
-# --- Pydantic Models ---
+
 class SentimentRequest(BaseModel):
     text: str
+
 
 class SentimentResponse(BaseModel):
     text: str
     sentiment: str
 
-# --- Model Loading Logic (WITH ENHANCED DEBUGGING) ---
-ROOT_DIR = Path(__file__).parent.parent
-MODEL_PATH = ROOT_DIR / "model.pkl"
+
+# Global variable to store the model
 model = None
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+
+def load_model() -> None:
+    """Load the trained model from S3."""
     global model
-    print("\n--- STARTING LIFESPAN ---")
-    print(f"Looking for model at: {MODEL_PATH}")
+    bucket_name = os.getenv("MODEL_BUCKET_NAME")
+    if not bucket_name:
+        raise RuntimeError("MODEL_BUCKET_NAME environment variable not set")
+    
+    s3_client = boto3.client('s3')
     
     try:
-        # Try to load the model
-        model = joblib.load(MODEL_PATH)
-        print(">>> SUCCESS: Model loaded successfully.")
-    
-    except FileNotFoundError:
-        print(">>> ERROR (FileNotFoundError):")
-        print(f"The script did not find ANY file at this path: {MODEL_PATH}")
-        print("Please confirm the 'model.pkl' file is in the project's root folder.")
-        model = None
-    
+        # Download model from S3 to temporary location
+        response = s3_client.get_object(Bucket=bucket_name, Key='model.pkl')
+        model_data = response['Body'].read()
+        
+        # Load model directly from bytes
+        model = joblib.load(io.BytesIO(model_data))
     except Exception as e:
-        # Catch ALL other errors
-        print(f">>> ERROR (Unexpected): {type(e).__name__} <<<")
-        print(f"Error Message: {e}")
-        print("This usually means the file exists, but:")
-        print("1. It is corrupted (try regenerating it)")
-        print("2. The script does not have read PERMISSIONS.")
-        model = None
-    
-    print("--- LIFESPAN: 'yield' (App is running) ---")
+        raise RuntimeError(f"Failed to load model from S3: {str(e)}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> Generator:
+    """Lifespan context manager to load model on startup."""
+    load_model()
     yield
-    # Cleaning up
-    model = None
-    print("--- LIFESPAN: Shutdown ---")
+
 
 app = FastAPI(lifespan=lifespan)
 
-# --- Endpoints ---
 
 @app.get("/health")
-def health():
+async def health_check():
+    """Health check endpoint."""
     return {"status": "ok"}
 
+
 @app.post("/predict", response_model=SentimentResponse)
-def predict(request: SentimentRequest):
+async def predict_sentiment(request: SentimentRequest):
+    """Predict sentiment for the given text."""
     if model is None:
-        # If the model failed to load, return a clear error
-        raise HTTPException(status_code=503, detail="Model is not loaded or failed to load. Check server logs.")
+        raise HTTPException(status_code=500, detail="Model not loaded")
     
-    # Run prediction (assuming model returns an array)
+    # Make prediction
     prediction = model.predict([request.text])[0]
+    sentiment = "positive" if prediction == 1 else "negative"
     
-    return SentimentResponse(text=request.text, sentiment=str(prediction))
+    return SentimentResponse(text=request.text, sentiment=sentiment)
