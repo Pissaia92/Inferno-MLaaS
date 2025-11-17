@@ -25,7 +25,6 @@ COPY --from=builder /app/.venv ./.venv
 
 # Copy the application code and the model
 COPY api/ ./api/
-COPY model.pkl ./model.pkl
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Run the application
