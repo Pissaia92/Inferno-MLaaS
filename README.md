@@ -92,7 +92,7 @@ v
 Clone the repository and install the dependencies using Poetry:
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Pissaia92/Inferno-MLaaS
 cd inferno-mlaas
 poetry install
 ```
@@ -192,3 +192,4 @@ There is **no manual approval step**. Deployment to production is immediate upon
 
 ```
 ```
+
